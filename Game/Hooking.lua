@@ -1016,7 +1016,7 @@ function Hooking.init()
 		local oldProtectedCall = nil
 		local oldGetFunctionEnvironment = nil
 
-		gameMetatable.__index = newcclosure(LPH_NO_VIRTUALIZE(function(...)
+		gameMetatable.__index = newcclosure(function(...)
 			local args = { ... }
 			local index = args[2]
 
@@ -1025,44 +1025,35 @@ function Hooking.init()
 			end
 
 			return oldGameMetatableIndex(...)
-		end))
+		end)
 
 		local lastErrorLevel = nil
 
-		oldGetFunctionEnvironment = hookfunction(
-			getfenv,
-			LPH_NO_VIRTUALIZE(function(...)
-				return getrenv()
-			end)
-		)
+		oldGetFunctionEnvironment = hookfunction(getfenv, function(...)
+			return getrenv()
+		end)
 
-		oldError = hookfunction(
-			error,
-			LPH_NO_VIRTUALIZE(function(...)
-				local args = { ... }
+		oldError = hookfunction(error, function(...)
+			local args = { ... }
 
-				lastErrorLevel = args[2]
+			lastErrorLevel = args[2]
 
-				return oldError(...)
-			end)
-		)
+			return oldError(...)
+		end)
 
-		oldProtectedCall = hookfunction(
-			pcall,
-			LPH_NO_VIRTUALIZE(function(...)
-				local results = { oldProtectedCall(...) }
+		oldProtectedCall = hookfunction(pcall, function(...)
+			local results = { oldProtectedCall(...) }
 
-				if lastErrorLevel == 4 then
-					return false, "KeyHandler - Lycoris On Top"
-				elseif lastErrorLevel ~= nil then
-					return false, "\000"
-				end
+			if lastErrorLevel == 4 then
+				return false, "KeyHandler - Lycoris On Top"
+			elseif lastErrorLevel ~= nil then
+				return false, "\000"
+			end
 
-				lastErrorLevel = nil
+			lastErrorLevel = nil
 
-				return table.unpack(results)
-			end)
-		)
+			return table.unpack(results)
+		end)
 
 		local thread = coroutine.create(func)
 		local results = table.pack(coroutine.resume(thread, ...))
