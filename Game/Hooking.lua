@@ -1014,8 +1014,9 @@ function Hooking.init()
 
 		local oldGameMetatableIndex = gameMetatable.__index
 		local oldProtectedCall = nil
+		local oldGetFunctionEnvironment = nil
 
-		gameMetatable.__index = newcclosure(LPH_NO_VIRTUALIZE(function(...)
+		gameMetatable.__index = newcclosure(function(...)
 			local args = { ... }
 			local index = args[2]
 
@@ -1024,40 +1025,42 @@ function Hooking.init()
 			end
 
 			return oldGameMetatableIndex(...)
-		end))
+		end)
 
 		local lastErrorLevel = nil
 
-		oldError = hookfunction(
-			error,
-			LPH_NO_VIRTUALIZE(function(...)
-				local args = { ... }
+		oldGetFunctionEnvironment = hookfunction(getfenv, function(...)
+			return getrenv()
+		end)
 
-				lastErrorLevel = args[2]
+		oldError = hookfunction(error, function(...)
+			local args = { ... }
 
-				return oldError(...)
-			end)
-		)
+			lastErrorLevel = args[2]
 
-		oldProtectedCall = hookfunction(
-			pcall,
-			LPH_NO_VIRTUALIZE(function(...)
-				local results = { oldProtectedCall(...) }
+			return oldError(...)
+		end)
 
-				if lastErrorLevel == 4 then
-					return false, "KeyHandler - Lycoris On Top"
-				elseif lastErrorLevel ~= nil then
-					return false, "\000"
-				end
+		oldProtectedCall = hookfunction(pcall, function(...)
+			local results = { oldProtectedCall(...) }
 
-				lastErrorLevel = nil
+			if lastErrorLevel == 4 then
+				return false, "KeyHandler - Lycoris On Top"
+			elseif lastErrorLevel ~= nil then
+				return false, "\000"
+			end
 
-				return table.unpack(results)
-			end)
-		)
+			lastErrorLevel = nil
+
+			return table.unpack(results)
+		end)
 
 		local thread = coroutine.create(func)
 		local results = table.pack(coroutine.resume(thread, ...))
+
+		if not results[1] then
+			return Logger.warn("Spoofed KeyHandler call failed to execute: %s", tostring(results[2]))
+		end
 
 		table.remove(results, 1)
 
@@ -1070,6 +1073,8 @@ function Hooking.init()
 		hookfunction(pcall, oldProtectedCall)
 
 		hookfunction(error, oldError)
+
+		hookfunction(getfenv, oldGetFunctionEnvironment)
 
 		return table.unpack(results)
 	end)
