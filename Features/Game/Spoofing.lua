@@ -174,6 +174,7 @@ return LPH_NO_VIRTUALIZE(function()
 
 		gestureGui:Destroy()
 		copyGestureGui:Clone().Parent = playerGui
+		modified = false
 	end
 
 	---Update freestyler band spoof.
